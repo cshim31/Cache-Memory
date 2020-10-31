@@ -3,6 +3,7 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include "lrustack.h"
 /**
  * This file contains some starter code to get you started on your LRU implementation.
@@ -61,16 +62,14 @@ int lru_stack_get_lru(lru_stack_t* stack) {
     //  TODO: Write code to get the index of the LRU block from the LRU
     //  Stack.
     ////////////////////////////////////////////////////////////////////
-		int n = stack->size;
 
 		//  error handler
 		if(!stack) return -1;
-		if(n <= 1) return n == 1 ? stack->queue[0] : -1;
 
 		/*
 			return lru based on stored mru index value
 		*/
-    return stack->queue[stack->lru];
+    return stack->queue[getLRU(stack)];
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
@@ -91,20 +90,19 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
 
 		if(!stack) return ;
 
-		if(stack->mru == UNDEFINED) {
-			stack->queue[stack->lru] = n;
-			stack->mru++;
-		}
-		else if(stack->mru == stack->size) {
-			stack->lru++;
-			stack->size++;
+		// not full
+		if(!isFull(stack)) {
 			stack->queue[stack->mru] = n;
-			stack->mru++;
+			stack->mru = getMRU(stack) < getSize(stack) - 1? getMRU(stack) + 1 : getMRU(stack);
+			return ;
 		}
+
 		else {
-			stack->queue[stack->mru] = n;
-			stack-> mru++;
+			for(int i =  getLRU(stack); i < getMRU(stack); i++) {
+				stack->queue[i] = stack->queue[i + 1];
+			}
 		}
+		stack->queue[getMRU(stack)] = n;
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
@@ -112,18 +110,17 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
 
 bool isFull(lru_stack_t* stack) {
 	if(!stack) return false;
-	if(stack->mru == stack->size) return true;
+	if(stack->mru == stack->size - 1) return true;
 	return false;
 }
 
-bool find(lru_stack_t* stack, int n) {
-	if(!stack) return false;
+int find(lru_stack_t* stack, int n) {
+	if(!stack) return UNDEFINED;
 	for(int i = getLRU(stack); i <= getMRU(stack); i++) {
-		if(stack->queue[i] == n) return true;
+		if(stack->queue[i] == n) return i;
 	}
-	return false;
+	return UNDEFINED;
 }
-/*
 int getMRU(lru_stack_t* stack) {
 	return stack->mru;
 }
@@ -131,7 +128,10 @@ int getMRU(lru_stack_t* stack) {
 int getLRU(lru_stack_t* stack) {
 	return stack->lru;
 }
-*/
+
+int getSize(lru_stack_t* stack) {
+	return stack->size;
+}
 /**
  * Function to free up any memory you dynamically allocated for <stack>
  *

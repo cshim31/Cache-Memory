@@ -4,7 +4,9 @@
 
 #ifndef __LRUSTACK_H
 #define __LRUSTACK_H
-#define UNDEFINED 0
+#define DEFAULT 0
+#define UNDEFINED -1
+#include <stdbool.h>
 /**
  * This file contains some starter code to get you started on your LRU implementation.
  * You are free to implement it however you see fit. You can design it to emulate how this
@@ -63,11 +65,11 @@ int lru_stack_get_lru(lru_stack_t* stack);
 	* @return the boolean of whether the stack is filled or not
 	*/
 bool isFull(lru_stack_t* stack);
-bool find(lru_stack_t* stack, int n);
+int find(lru_stack_t* stack, int n);
 
 int getMRU(lru_stack_t* stack);
 int getLRU(lru_stack_t* stack);
-
+int getSize(lru_stack_t* stack);
 /**
  * Function to mark the cache block with index <n> as MRU in <stack>. This operation should
  * change/mutate the LRU stack.

@@ -66,7 +66,7 @@ void cachesim_init(int _block_size, int _cache_size, int _ways) {
     num_index_bits = simple_log_2(block_size);
     cache = (cache_set_t*)malloc(sizeof(cache_set_t) * cache_size);
     cache->blocks = (cache_block_t*)malloc(block_size * num_sets * ways * sizeof(cache_block_t));
-    cache->stack.init_lru_stack(ways);
+    cache->stack = init_lru_stack(ways);
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
@@ -93,67 +93,113 @@ void cachesim_access(addr_t physical_addr, int access_type) {
     //      - Remember to update all the necessary statistics as necessary
     //      - Remember to correctly update your valid and dirty bits.
     ////////////////////////////////////////////////////////////////////
-
-    /*
-    *   Shift LRU stack and increment hits if matching tag is already existing
-    */
     counter_t tag = (physical_addr & 128);
     counter_t index = (physical_addr & 112);
-    for(int i = 0; i < ways; i++) {
-      if(cache->blocks[index][i].valid == 1 && cache->blocks[index][i].tag == tag) {
-        hits++;
-        accessess++;
-        cache->stack.lru_stack_set_mru(cache->stack, tag);
-        return;
-      }
-    }
 
     /*
     *   Update LRU, MRU and tag information in the cache
     */
-    int lru = cache->stack.getLRU();
-    int mru = cache->stack.getMRU();
-    switch(access_type) {
-      case MEMWRITE :
-      if(cache->blocks[index][lru].valid == 1 && cache->blocks[index][lru].dirty == ways) {
-        cache->blocks[index][lru].tag = tag;
-        cache->blocks[index][lru].dirty--;
-        cache->stack.lru_stack_set_mru(cache->stack, tag);
-        writebacks++;
+    int mru = getMRU(cache->stack);
+    int lru = getMRU(cache->stack);
+    int hitIndex = find(cache->stack, tag);
+
+    for(int i = 0; i < ways; i++) {
+      if(cache->blocks[index][i].valid == 1) {
+        // hit
+        if(cache->blocks[index][i].tag == tag) {
+          // filled hit
+          if(isFull(cache->stack)) {
+            switch(access_type) {
+              case MEMWRITE :
+                cache->stack.lru_stack_set_mru(cache->stack, i);
+                hits++;
+                break;
+              case IFETCH :
+                cache->stack.lru_stack_set_mru(cache->stack, i);
+                hits++;
+                break;
+              case MEMREAD :
+                cache->stack.lru_stack_set_mru(cache->stack, i);
+                hits++;
+                break;
+            }
+          }
+          // unfilled hit
+          else {
+            switch(access_type) {
+              case MEMWRITE :
+              cache->stack.lru_stack_set_mru(cache->stack, i);
+              hits++;
+              break;
+            case IFETCH :
+              cache->stack.lru_stack_set_mru(cache->stack, i);
+              hits++;
+              break;
+            case MEMREAD :
+              cache->stack.lru_stack_set_mru(cache->stack, i);
+              hits++;
+              break;
+            }
+          }
+          accessess++;
+          return;
+        }
       }
+      // not filled cache memory
       else {
-        cache->blocks[index][lru].dirty++;
-        cache->stack.lru_stack_set_mru(cache->stack, tag);
-        missess++;
+        if(!cache->stack.isFull()) {
+          switch(access_type) {
+            case MEMWRITE :
+            cache->blocks[index][i].tag = tag;
+            cache->blocks[index][i].valid = 1;
+            cache->blocks[index][i].dirty = 0;
+            cache->stack.lru_stack_set_mru(cache->stack, i);
+            writebacks++;
+            break;
+            case IFETCH:
+            cache->blocks[index][i].tag = tag;
+            cache->blocks[index][i].valid = 1;
+            cache->blocks[index][i].dirty = 0;
+            cache->stack.lru_stack_set_mru(cache->stack, i);
+            misses++;
+            break;
+            case MEMREAD :
+            cache->blocks[index][i].tag = tag;
+            cache->blocks[index][i].valid = 1;
+            cache->blocks[index][i].dirty = 0;
+            cache->stack.lru_stack_set_mru(cache->stack, i);
+            misses++;
+            break;
+          }
+        }
+        accessess++;
+        return;
       }
-      break;
-      case IFETCH :
-      if(cache->blocks[index][lru].valid == 1) {
-        cache->blocks[index][lru].tag = tag;
-        cache->blocks[index][lru].dirty++;
-        cache->stack.lru_stack_set_mru(cache->stack, tag);
-        missess++;
-      }
-      break;
-      case MEMREAD :
-      if(cache->blocks[index][lru].valid == 1) {
-        cache->blocks[index][lru].tag = tag;
-        cache->blocks[index][lru].dirty++;
-        cache->stack.lru_stack_set_mru(cache->stack, tag);
-        missess++;
-      }
-      break;
     }
 
-    /*
-    *   Fill up the empty space of cache memory
-    */
-    if(!cache->stack.isFull()) {
-      cache->stack.lru_stack_set_mru(cache->stack, tag);
-      cache->blocks[index][].valid = 1;
-      cache->blocks[index][lru].tag = tag;
-      cache->blocks[index][lru].dirty = 0;
+    // filled miss
+    switch(access_type) {
+      case MEMWRITE :
+      cache->blocks[index][getLRU(cache->stack)].tag = tag;
+      cache->blocks[index][getLRU(cache->stack)].valid = 1;
+      cache->blocks[index][getLRU(cache->stack)].dirty = 1;
+      cache->stack.lru_stack_set_mru(cache->stack, getLRU(cache->stack));
+      writebacks++;
+      break;
+      case IFETCH:
+      cache->blocks[index][getLRU(cache->stack)].tag = tag;
+      cache->blocks[index][getLRU(cache->stack)].valid = 1;
+      cache->blocks[index][getLRU(cache->stack)].dirty = 1;
+      cache->stack.lru_stack_set_mru(cache->stack, getLRU(cache->stack));
       misses++;
+      break;
+      case MEMREAD :
+      cache->blocks[index][getLRU(cache->stack)].tag = tag;
+      cache->blocks[index][getLRU(cache->stack)].valid = 1;
+      cache->blocks[index][getLRU(cache->stack)].dirty = 1;
+      cache->stack.lru_stack_set_mru(cache->stack, getLRU(cache->stack));
+      misses++;
+      break;
     }
     accesses++;
     ////////////////////////////////////////////////////////////////////
