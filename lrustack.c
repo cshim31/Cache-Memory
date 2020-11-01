@@ -89,18 +89,25 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
     ////////////////////////////////////////////////////////////////////
 
 		if(!stack) return ;
-
-		// not full
 		if(!isFull(stack)) {
 			stack->queue[stack->mru] = n;
 			stack->mru = getMRU(stack) < getSize(stack) - 1? getMRU(stack) + 1 : getMRU(stack);
 			return ;
 		}
 
-		else {
-			for(int i =  getLRU(stack); i < getMRU(stack); i++) {
+		int hitIndex = find(stack, n);
+
+		// hit
+		if(hitIndex > 0) {
+			for(int i = hitIndex; i < getMRU(stack); i++) {
 				stack->queue[i] = stack->queue[i + 1];
 			}
+			stack->queue[getMRU(stack)] = n;
+		}
+
+		// miss
+		for(int i =  getLRU(stack); i < getMRU(stack); i++) {
+			stack->queue[i] = stack->queue[i + 1];
 		}
 		stack->queue[getMRU(stack)] = n;
     ////////////////////////////////////////////////////////////////////

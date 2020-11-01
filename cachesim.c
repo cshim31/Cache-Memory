@@ -99,10 +99,6 @@ void cachesim_access(addr_t physical_addr, int access_type) {
     /*
     *   Update LRU, MRU and tag information in the cache
     */
-    int mru = getMRU(cache->stack);
-    int lru = getMRU(cache->stack);
-    int hitIndex = find(cache->stack, tag);
-
     for(int i = 0; i < ways; i++) {
       if(cache->blocks[index][i].valid == 1) {
         // hit
@@ -152,9 +148,9 @@ void cachesim_access(addr_t physical_addr, int access_type) {
             case MEMWRITE :
             cache->blocks[index][i].tag = tag;
             cache->blocks[index][i].valid = 1;
-            cache->blocks[index][i].dirty = 0;
+            cache->blocks[index][i].dirty = 1;
             cache->stack.lru_stack_set_mru(cache->stack, i);
-            writebacks++;
+            misses++;
             break;
             case IFETCH:
             cache->blocks[index][i].tag = tag;
@@ -178,28 +174,12 @@ void cachesim_access(addr_t physical_addr, int access_type) {
     }
 
     // filled miss
-    switch(access_type) {
-      case MEMWRITE :
-      cache->blocks[index][getLRU(cache->stack)].tag = tag;
-      cache->blocks[index][getLRU(cache->stack)].valid = 1;
-      cache->blocks[index][getLRU(cache->stack)].dirty = 1;
-      cache->stack.lru_stack_set_mru(cache->stack, getLRU(cache->stack));
+    if(cache->blocks[index][lru_stack_get_lru(cache->stack)].dirty == 1) {
+      cache->blocks[index][lru_stack_get_lru(cache->stack)].tag = tag;
+      cache->blocks[index][lru_stack_get_lru(cache->stack)].valid = 1;
+      cache->blocks[index][lru_stack_get_lru(cache->stack)].dirty = 1;
+      cache->stack.lru_stack_set_mru(cache->stack, lru_stack_get_lru(cache->stack));
       writebacks++;
-      break;
-      case IFETCH:
-      cache->blocks[index][getLRU(cache->stack)].tag = tag;
-      cache->blocks[index][getLRU(cache->stack)].valid = 1;
-      cache->blocks[index][getLRU(cache->stack)].dirty = 1;
-      cache->stack.lru_stack_set_mru(cache->stack, getLRU(cache->stack));
-      misses++;
-      break;
-      case MEMREAD :
-      cache->blocks[index][getLRU(cache->stack)].tag = tag;
-      cache->blocks[index][getLRU(cache->stack)].valid = 1;
-      cache->blocks[index][getLRU(cache->stack)].dirty = 1;
-      cache->stack.lru_stack_set_mru(cache->stack, getLRU(cache->stack));
-      misses++;
-      break;
     }
     accesses++;
     ////////////////////////////////////////////////////////////////////
