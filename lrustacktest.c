@@ -59,7 +59,42 @@ void run_student_tests() {
     ////////////////////////////////////////////////////////////////////
     //  Optional: Add any additional tests for your LRU stack implementation.
     ////////////////////////////////////////////////////////////////////
+    int size = 8;
+    lru_stack_t* stack = init_lru_stack(size);
 
+    // For testing, LRU stack is initialized with 0 as MRU and 1 as LRU.
+    for (int i = (size - 1); i >= 0; i--) {
+        lru_stack_set_mru(stack, i);
+    }
+    printf("Expected %d, but got %d\n", size - 1, lru_stack_get_lru(stack));
+    show(stack);
+
+    for (int i = (size - 1); i >= 1; i--) {
+        lru_stack_set_mru(stack, i);
+        printf("Expected %d, but got %d\n", i - 1, lru_stack_get_lru(stack));
+        show(stack);
+    }
+
+    lru_stack_set_mru(stack, 4);
+    show(stack);
+
+    lru_stack_set_mru(stack, 7);
+    show(stack);
+
+    lru_stack_set_mru(stack, 3);
+    show(stack);
+
+    lru_stack_set_mru(stack, 5);
+    show(stack);
+
+    lru_stack_set_mru(stack, 2);
+    show(stack);
+    
+    for (int i = 0; i < (size - 1); i++) {
+        lru_stack_set_mru(stack, lru_stack_get_lru(stack));
+        show(stack);
+    }
+    printf("Expected %d, but got %d\n", 4, lru_stack_get_lru(stack));
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////

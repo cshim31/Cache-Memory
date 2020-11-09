@@ -61,12 +61,15 @@ void cachesim_init(int _block_size, int _cache_size, int _ways) {
     //      - Calculate any values you need such as number of index bits.
     //      - Allocate any data structures you need.
     ////////////////////////////////////////////////////////////////////
-    num_sets = cache_size / block_size;
-    num_offset_bits = simple_log_2(num_sets);
-    num_index_bits = simple_log_2(block_size);
-    cache = (cache_set_t*)malloc(sizeof(cache_set_t) * cache_size);
-    cache->blocks = (cache_block_t*)malloc(block_size * num_sets * ways * sizeof(cache_block_t));
-    cache->stack = init_lru_stack(ways);
+    num_sets = cache_size / (block_size * ways);
+    num_index_bits = simple_log_2(num_sets);
+    num_offset_bits = simple_log_2(block_size);
+    cache = (cache_set_t*)malloc(sizeof(cache_set_t) * num_sets);
+    for(int i = 0; i < num_sets; i++) {
+      cache[i].blocks = (cache_block_t*)malloc(ways * sizeof(cache_block_t));
+      cache[i].stack = init_lru_stack(ways);
+      cache[i].size = ways;
+    }
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
@@ -93,95 +96,54 @@ void cachesim_access(addr_t physical_addr, int access_type) {
     //      - Remember to update all the necessary statistics as necessary
     //      - Remember to correctly update your valid and dirty bits.
     ////////////////////////////////////////////////////////////////////
-    counter_t tag = (physical_addr & 128);
-    counter_t index = (physical_addr & 112);
-
+    int tag = physical_addr / block_size / num_sets;
+    int index = physical_addr / block_size % num_sets;
+    if(index < 0 || index >= num_sets) return;
     /*
-    *   Update LRU, MRU and tag information in the cache
+    *   Check tag of each block and increment necessary statistics
     */
-    for(int i = 0; i < ways; i++) {
-      if(cache->blocks[index][i].valid == 1) {
+    for(int i = 0; i < cache[index].size; i++) {
         // hit
-        if(cache->blocks[index][i].tag == tag) {
-          // filled hit
-          if(isFull(cache->stack)) {
-            switch(access_type) {
-              case MEMWRITE :
-                cache->stack.lru_stack_set_mru(cache->stack, i);
-                hits++;
-                break;
-              case IFETCH :
-                cache->stack.lru_stack_set_mru(cache->stack, i);
-                hits++;
-                break;
-              case MEMREAD :
-                cache->stack.lru_stack_set_mru(cache->stack, i);
-                hits++;
-                break;
-            }
+        if(cache[index].blocks[i].valid == 1) {
+          if(cache[index].blocks[i].tag == tag) {
+            lru_stack_set_mru(cache[index].stack, i);
+            hits++;
+            accesses++;
+            return;
           }
-          // unfilled hit
-          else {
-            switch(access_type) {
-              case MEMWRITE :
-              cache->stack.lru_stack_set_mru(cache->stack, i);
-              hits++;
-              break;
-            case IFETCH :
-              cache->stack.lru_stack_set_mru(cache->stack, i);
-              hits++;
-              break;
+        }
+
+        // unfilled cache miss
+        else {
+          cache[index].blocks[i].tag = tag;
+          cache[index].blocks[i].valid = 1;
+          switch(access_type) {
+            case MEMWRITE :
+            cache[index].blocks[i].dirty = 1;
+            break;
             case MEMREAD :
-              cache->stack.lru_stack_set_mru(cache->stack, i);
-              hits++;
-              break;
-            }
+            cache[index].blocks[i].dirty = 0;
+            break;
+            case IFETCH:
+            cache[index].blocks[i].dirty = 0;
+            break;
           }
-          accessess++;
+          lru_stack_set_mru(cache[index].stack, i);
+          misses++;
+          accesses++;
           return;
         }
       }
-      // not filled cache memory
-      else {
-        if(!cache->stack.isFull()) {
-          switch(access_type) {
-            case MEMWRITE :
-            cache->blocks[index][i].tag = tag;
-            cache->blocks[index][i].valid = 1;
-            cache->blocks[index][i].dirty = 1;
-            cache->stack.lru_stack_set_mru(cache->stack, i);
-            misses++;
-            break;
-            case IFETCH:
-            cache->blocks[index][i].tag = tag;
-            cache->blocks[index][i].valid = 1;
-            cache->blocks[index][i].dirty = 0;
-            cache->stack.lru_stack_set_mru(cache->stack, i);
-            misses++;
-            break;
-            case MEMREAD :
-            cache->blocks[index][i].tag = tag;
-            cache->blocks[index][i].valid = 1;
-            cache->blocks[index][i].dirty = 0;
-            cache->stack.lru_stack_set_mru(cache->stack, i);
-            misses++;
-            break;
-          }
-        }
-        accessess++;
-        return;
-      }
-    }
 
-    // filled miss
-    if(cache->blocks[index][lru_stack_get_lru(cache->stack)].dirty == 1) {
-      cache->blocks[index][lru_stack_get_lru(cache->stack)].tag = tag;
-      cache->blocks[index][lru_stack_get_lru(cache->stack)].valid = 1;
-      cache->blocks[index][lru_stack_get_lru(cache->stack)].dirty = 1;
-      cache->stack.lru_stack_set_mru(cache->stack, lru_stack_get_lru(cache->stack));
-      writebacks++;
-    }
-    accesses++;
+      // filled cache miss
+      if(cache[index].blocks[lru_stack_get_lru(cache[index].stack)].dirty == 1) writebacks++;
+
+      if(access_type == MEMWRITE) cache[index].blocks[lru_stack_get_lru(cache[index].stack)].dirty = 1;
+      cache[index].blocks[lru_stack_get_lru(cache[index].stack)].tag = tag;
+      cache[index].blocks[lru_stack_get_lru(cache[index].stack)].valid = 1;
+      lru_stack_set_mru(cache[index].stack, lru_stack_get_lru(cache[index].stack));
+      misses++;
+      accesses++;
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
@@ -194,9 +156,11 @@ void cachesim_cleanup() {
     ////////////////////////////////////////////////////////////////////
     //  TODO: Write the code to do any heap allocation cleanup
     ////////////////////////////////////////////////////////////////////
-    free(cache->stack);
-    free(cache->blocks);
-    free(cache);
+    for(int i = 0; i < num_sets; i++) {
+      free(cache[i].blocks);
+      lru_stack_cleanup(cache[i].stack);
+    }
+   free(cache);
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////

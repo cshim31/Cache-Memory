@@ -70,6 +70,7 @@ int find(lru_stack_t* stack, int n);
 int getMRU(lru_stack_t* stack);
 int getLRU(lru_stack_t* stack);
 int getSize(lru_stack_t* stack);
+void show(lru_stack_t* stack);
 /**
  * Function to mark the cache block with index <n> as MRU in <stack>. This operation should
  * change/mutate the LRU stack.

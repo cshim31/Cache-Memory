@@ -41,8 +41,8 @@ lru_stack_t* init_lru_stack(int size) {
     //  added to lru_stack_t.
     ////////////////////////////////////////////////////////////////////
 		stack->queue = (int*)malloc(stack->size * sizeof(int));
-		stack->mru = UNDEFINED;
-		stack->lru = UNDEFINED;
+		stack->mru = DEFAULT;
+		stack->lru = DEFAULT;
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
@@ -63,8 +63,6 @@ int lru_stack_get_lru(lru_stack_t* stack) {
     //  Stack.
     ////////////////////////////////////////////////////////////////////
 
-		//  error handler
-		if(!stack) return -1;
 
 		/*
 			return lru based on stored mru index value
@@ -88,7 +86,6 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
     //  element in the LRU Stack.
     ////////////////////////////////////////////////////////////////////
 
-		if(!stack) return ;
 		if(!isFull(stack)) {
 			stack->queue[stack->mru] = n;
 			stack->mru = getMRU(stack) < getSize(stack) - 1? getMRU(stack) + 1 : getMRU(stack);
@@ -98,15 +95,17 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
 		int hitIndex = find(stack, n);
 
 		// hit
-		if(hitIndex > 0) {
-			for(int i = hitIndex; i < getMRU(stack); i++) {
-				stack->queue[i] = stack->queue[i + 1];
-			}
-			stack->queue[getMRU(stack)] = n;
+		int i;
+		if(hitIndex != UNDEFINED) {
+			i = hitIndex;
 		}
 
 		// miss
-		for(int i =  getLRU(stack); i < getMRU(stack); i++) {
+		else {
+			i = getLRU(stack);
+		}
+
+		for(i; i < getMRU(stack); i++) {
 			stack->queue[i] = stack->queue[i + 1];
 		}
 		stack->queue[getMRU(stack)] = n;
@@ -116,18 +115,17 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
 }
 
 bool isFull(lru_stack_t* stack) {
-	if(!stack) return false;
 	if(stack->mru == stack->size - 1) return true;
 	return false;
 }
 
 int find(lru_stack_t* stack, int n) {
-	if(!stack) return UNDEFINED;
 	for(int i = getLRU(stack); i <= getMRU(stack); i++) {
 		if(stack->queue[i] == n) return i;
 	}
 	return UNDEFINED;
 }
+
 int getMRU(lru_stack_t* stack) {
 	return stack->mru;
 }
@@ -139,6 +137,13 @@ int getLRU(lru_stack_t* stack) {
 int getSize(lru_stack_t* stack) {
 	return stack->size;
 }
+
+void show(lru_stack_t* stack) {
+	for(int i = 0; i < stack->size; i++) {
+		printf("%d ", stack->queue[i]);
+	}
+	printf("\n");
+}
 /**
  * Function to free up any memory you dynamically allocated for <stack>
  *
@@ -149,10 +154,9 @@ void lru_stack_cleanup(lru_stack_t* stack) {
     //  TODO: Write any code if you need to do additional heap allocation
     //  cleanup
     ////////////////////////////////////////////////////////////////////
-
+		free(stack->queue);
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
-		free(stack->queue);
     free(stack);      // Free the stack struct we malloc'd
 }
