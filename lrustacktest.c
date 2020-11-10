@@ -37,7 +37,6 @@ void run_ta_tests() {
 
     // Test whether (size - 1) is the LRU
     assert_equal(test_num++, size - 1, lru_stack_get_lru(stack));
-
     // Sequentially mark each LRU as MRU and make sure LRU rotates.
     for (int i = (size - 1); i >= 1; i--) {
         lru_stack_set_mru(stack, i);

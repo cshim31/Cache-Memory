@@ -84,8 +84,10 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
 	////////////////////////////////////////////////////////////////////
     //  TODO: Write code to set the passed in block index  as the MRU
     //  element in the LRU Stack.
+	//  Shift data starting from index where the input data already exists in cache
     ////////////////////////////////////////////////////////////////////
 
+		// unfilled LRU stack
 		if(!isFull(stack)) {
 			stack->queue[stack->mru] = n;
 			stack->mru = getMRU(stack) < getSize(stack) - 1? getMRU(stack) + 1 : getMRU(stack);
@@ -94,13 +96,13 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
 
 		int hitIndex = find(stack, n);
 
-		// hit
+		// input already exists in stack
 		int i;
 		if(hitIndex != UNDEFINED) {
 			i = hitIndex;
 		}
 
-		// miss
+		// input does not exists in stack
 		else {
 			i = getLRU(stack);
 		}
@@ -114,11 +116,24 @@ void lru_stack_set_mru(lru_stack_t* stack, int n) {
     ////////////////////////////////////////////////////////////////////
 }
 
+/**
+	*	Function to check whether LRU stack has been filled and empty space doesn't exist
+	*
+	* @param stack is the stack to run the operation on.
+	* @return the boolean of whether the stack is filled or not
+	*/
 bool isFull(lru_stack_t* stack) {
 	if(stack->mru == stack->size - 1) return true;
 	return false;
 }
 
+/**
+	*	Function to check whether the integer already exists in the LRU stack
+	*
+	* @param stack is the stack to run the operation on.
+	* @param n is the integer value to search for 
+	* @return the integer index of where the n is located in stack
+	*/
 int find(lru_stack_t* stack, int n) {
 	for(int i = getLRU(stack); i <= getMRU(stack); i++) {
 		if(stack->queue[i] == n) return i;
@@ -126,6 +141,12 @@ int find(lru_stack_t* stack, int n) {
 	return UNDEFINED;
 }
 
+/**
+	* Getters of necessary variables in LRU stack
+	*
+	* @param stack is the stack to run the operation on
+	* @return the integer value of variables
+	*/
 int getMRU(lru_stack_t* stack) {
 	return stack->mru;
 }
@@ -138,12 +159,18 @@ int getSize(lru_stack_t* stack) {
 	return stack->size;
 }
 
+/**
+	*	Function to show internal data of the LRU stack
+	*
+	* @param stack is the stack to run the operation on.
+	*/
 void show(lru_stack_t* stack) {
 	for(int i = 0; i < stack->size; i++) {
 		printf("%d ", stack->queue[i]);
 	}
 	printf("\n");
 }
+
 /**
  * Function to free up any memory you dynamically allocated for <stack>
  *

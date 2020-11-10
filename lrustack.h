@@ -65,11 +65,30 @@ int lru_stack_get_lru(lru_stack_t* stack);
 	* @return the boolean of whether the stack is filled or not
 	*/
 bool isFull(lru_stack_t* stack);
+/**
+	*	Function to check whether the integer already exists in the LRU stack
+	*
+	* @param stack is the stack to run the operation on.
+	* @param n is the integer value to search for 
+	* @return the integer index of where the n is located in stack
+	*/
 int find(lru_stack_t* stack, int n);
 
+/**
+	* Getters of necessary variables in LRU stack
+	*
+	* @param stack is the stack to run the operation on
+	* @return the integer value of variables
+	*/
 int getMRU(lru_stack_t* stack);
 int getLRU(lru_stack_t* stack);
 int getSize(lru_stack_t* stack);
+
+/**
+	*	Function to show internal data of the LRU stack
+	*
+	* @param stack is the stack to run the operation on.
+	*/
 void show(lru_stack_t* stack);
 /**
  * Function to mark the cache block with index <n> as MRU in <stack>. This operation should

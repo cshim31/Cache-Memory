@@ -98,14 +98,14 @@ void cachesim_access(addr_t physical_addr, int access_type) {
     ////////////////////////////////////////////////////////////////////
     int tag = physical_addr / block_size / num_sets;
     int index = physical_addr / block_size % num_sets;
-    if(index < 0 || index >= num_sets) return;
     /*
     *   Check tag of each block and increment necessary statistics
     */
     for(int i = 0; i < cache[index].size; i++) {
-        // hit
+        // case 1 : hit
         if(cache[index].blocks[i].valid == 1) {
           if(cache[index].blocks[i].tag == tag) {
+            if(access_type == MEMWRITE) cache[index].blocks[i].dirty = 1;
             lru_stack_set_mru(cache[index].stack, i);
             hits++;
             accesses++;
@@ -113,20 +113,13 @@ void cachesim_access(addr_t physical_addr, int access_type) {
           }
         }
 
-        // unfilled cache miss
+        // case 2: unfilled cache miss
         else {
           cache[index].blocks[i].tag = tag;
           cache[index].blocks[i].valid = 1;
-          switch(access_type) {
-            case MEMWRITE :
-            cache[index].blocks[i].dirty = 1;
-            break;
-            case MEMREAD :
+          if(access_type == MEMWRITE) cache[index].blocks[i].dirty = 1;
+          else {
             cache[index].blocks[i].dirty = 0;
-            break;
-            case IFETCH:
-            cache[index].blocks[i].dirty = 0;
-            break;
           }
           lru_stack_set_mru(cache[index].stack, i);
           misses++;
@@ -135,15 +128,18 @@ void cachesim_access(addr_t physical_addr, int access_type) {
         }
       }
 
-      // filled cache miss
-      if(cache[index].blocks[lru_stack_get_lru(cache[index].stack)].dirty == 1) writebacks++;
-
-      if(access_type == MEMWRITE) cache[index].blocks[lru_stack_get_lru(cache[index].stack)].dirty = 1;
-      cache[index].blocks[lru_stack_get_lru(cache[index].stack)].tag = tag;
-      cache[index].blocks[lru_stack_get_lru(cache[index].stack)].valid = 1;
-      lru_stack_set_mru(cache[index].stack, lru_stack_get_lru(cache[index].stack));
-      misses++;
-      accesses++;
+    // case 3: filled cache miss
+    int i = lru_stack_get_lru(cache[index].stack);
+    if(cache[index].blocks[i].dirty == 1) writebacks++;
+    cache[index].blocks[i].tag = tag;
+    cache[index].blocks[i].valid = 1;
+    if(access_type == MEMWRITE) cache[index].blocks[i].dirty = 1;
+    else {
+      cache[index].blocks[i].dirty = 0;
+    }
+    lru_stack_set_mru(cache[index].stack, i);
+    misses++;
+    accesses++;
     ////////////////////////////////////////////////////////////////////
     //  End of your code
     ////////////////////////////////////////////////////////////////////
