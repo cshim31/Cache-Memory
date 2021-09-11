@@ -1,2 +1,2 @@
 # Cache-Memory
-Cache memory device simulation for Georgia Tech ECE 3057 course
+Georgia Tech ECE 3057: Cache memory device simulation 
